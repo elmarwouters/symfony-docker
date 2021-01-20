@@ -1,37 +1,49 @@
-version: '3'
+version: '2'
 
 services:
-  nginx:
-    build:
-      context: ./
-      dockerfile: Dockerfile-nginx
-    volumes:
-      - ./symfony/:var/www/symfony/
-    ports:
-      - 8001:80
-    networks:
-      - symfony
-  php:
-    build:
-      context: .
-      dockerfile: Dockerfile-php
-    environment:
-      APP_ENV: dev
-    volumes:
-      - ./symfony/:var/www/symfony.
-    networks:
-      - symfony
-  mysql:
-    image: mysql
-    command: ['--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci', '--default-authentication-plugin=mysql_native_password']
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-    ports:
-      - 3306:3306
-    volumes:
-    - ./mysql:/var/lib/mysql
-    networks:
-      - symfony
+
+    db:
+        image: mysql:5.7.17
+        env_file:
+          - .env
+        volumes:
+          - "./volumes/mysql/dev:/var/lib/mysql"
+        networks:
+          crv_dev_network:
+            aliases:
+              - mysql
+
+    nginx:
+        image: codereviewvideos/nginx.dev
+        ports:
+          - "81:80"
+        restart: always
+        volumes:
+          - "./volumes/nginx/logs:/var/log/nginx/"
+        volumes_from:
+            - php
+        networks:
+          crv_dev_network:
+            aliases:
+              - nginx
+
+    php:
+        image: codereviewvideos/www.dev
+        restart: always
+        env_file:
+          - .env
+        volumes:
+          - "./volumes/php/app/cache:/var/www/dev/app/cache/:rw"
+          - "./volumes/php/app/logs:/var/www/dev/app/logs/:rw"
+          - "./volumes/.composer:/var/www/.composer"
+          - "./app:/var/www/dev"
+        networks:
+          crv_dev_network:
+            aliases:
+              - php
+
+
 
 networks:
-  symfony:
+  crv_dev_network:
+    driver: bridge
